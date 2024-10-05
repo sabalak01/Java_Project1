@@ -1,0 +1,20 @@
+{% extends 'flashcards_app/index.html' %}
+
+{% block content %}
+    <p>{{ deck }}</p>
+
+    {% if flashcards %}
+        <ul>
+            {% for card in flashcards %}
+                <li>Question: {{ card.question }}</li>
+                <li>Answer:{{ card.answer }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>no flashcards for this deck</p>
+    {% endif %}
+    <a href="{% url 'flashcards:add_flashcard' deck.id %}">add flashcard</a>
+
+
+
+{% endblock content %}

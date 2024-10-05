@@ -1,0 +1,13 @@
+{% extends 'flashcards_app/index.html' %}
+
+{% block content %}
+
+    <p>Add a deck: </p>
+    <form action="{% url 'flashcards:add_deck' %}" method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button name="submit">Add deck</button>
+    </form>
+
+
+{% endblock content %}

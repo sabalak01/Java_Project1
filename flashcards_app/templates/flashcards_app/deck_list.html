@@ -1,0 +1,22 @@
+{% extends 'flashcards_app/index.html' %}  <!-- Предполагается, что у вас есть базовый шаблон -->
+
+{% block content %}
+    <h1>Список колод</h1>
+
+    {% if decks %}
+        <ul>
+            {% for deck in decks %}
+                <li>
+                    <a href="{% url 'flashcards:deck_detail' deck.id %}">{{ deck.name }}</a>  <!-- Ссылка на подробности колоды -->
+                    {% if deck.description %}
+                        <p>{{ deck.description }}</p>  <!-- Отображение описания колоды, если оно есть -->
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>У вас нет колод. Создайте новую колоду!</p>
+
+    {% endif %}
+    <a href="{% url 'flashcards:add_deck' %}">add a deck: </a>
+{% endblock content %}
