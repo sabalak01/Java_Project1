@@ -16,7 +16,7 @@ class Deck(models.Model):
 class Flashcard(models.Model):
     deck = models.ForeignKey(Deck, on_delete=models.CASCADE, related_name='flashcards')
     question = models.CharField(max_length=255)
-    answer = models.TextField()
+    answer = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     last_reviewed = models.DateTimeField(default=timezone.now)
     repetition_interval = models.IntegerField(default=1)  # Интервал в днях
