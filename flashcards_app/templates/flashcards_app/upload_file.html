@@ -9,5 +9,10 @@
         <button type="submit">Загрузить</button>
     </form>
 
+
+    {% if error_message %}
+        <div class="error">{{ error_message }}</div>
+    {% endif %}
+
     <a href="{% url 'flashcards:deck_detail' deck.id %}">Вернуться к колоде</a>
 {% endblock content %}

@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'flashcards_app',
     'django_celery_beat',
+    'users',
 ]
 
 MIDDLEWARE = [

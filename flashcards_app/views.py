@@ -1,3 +1,4 @@
+from dill.pointers import refobject
 from django.contrib.gis.db.backends.postgis.pgraster import chunk
 from django.shortcuts import render
 
@@ -9,6 +10,7 @@ from .forms import UploadFileForm
 from django.http import HttpResponseRedirect
 from django.db.models import F
 import requests
+import cohere
 
 
 def home(request):
@@ -16,7 +18,7 @@ def home(request):
 
 
 def deck_list(request):
-    decks = Deck.objects.filter(created_by=request.user)
+    decks = Deck.objects.all()
     context = {'decks': decks}
     return render(request, 'flashcards_app/deck_list.html', context)
 
@@ -64,33 +66,92 @@ def study_deck(request, deck_id):
     return render(request, 'flashcards_app/study_deck.html', {'deck': deck, 'flashcards': flashcards})
 
 
-import requests
+cohere_client = cohere.Client('FWkM6KQvBrWjyadYSwEhbKkn5LoedeZr14IZhFbw')
 
-def get_answer_from_gemini(question):
-    api_key = "AIzaSyAvu9Ivcg7j8Gr3bzsCp7CHWi4F-KCRW28"  # Ваш API ключ Gemini
-    endpoint = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=AIzaSyAvu9Ivcg7j8Gr3bzsCp7CHWi4F-KCRW28'
-
-    payload = {
-        "prompt": question,  # Замените "question" на "prompt", если API ожидает такого поля
-        "max_tokens": 100  # Установите лимит на количество генерируемых токенов (по необходимости)
-    }
-
-    headers = {
-        "Content-Type": "application/json"
-    }
-
+def get_answer_from_cohere(question):
     try:
-        response = requests.post(endpoint, json=payload, headers=headers)
-        response.raise_for_status()  # Проверка на ошибки HTTP
-        data = response.json()  # Извлекаем JSON ответ
+        # Запрос к Cohere для генерации текста
+        response = cohere_client.generate(
+            model='command-xlarge-nightly',  # Выбор модели
+            prompt=question,  # Текст вопроса
+            max_tokens=50,  # Лимит на количество генерируемых токенов
+            temperature=0.5  # Температура контролирует креативность (вы можете поэкспериментировать)
+        )
 
-        # Убедитесь, что ключи, которые вы извлекаете, соответствуют структуре ответа API
-        answer = data.get('choices', [{}])[0].get('text', '')
-        return answer
+        # Извлечение сгенерированного ответа
+        if response and response.generations:
+            return response.generations[0].text.strip()  # Возвращаем сгенерированный ответ
+        return "Ответ отсутствует"
 
-    except requests.exceptions.RequestException as e:
-        print(f"Ошибка при запросе к API Gemini: {e}")
+    except cohere.CohereError as e:
+        print(f"Ошибка при запросе к API Cohere: {e}")
         return None
+
+
+
+# def handle_uploaded_file(f, deck):
+#     try:
+#         content = f.read().decode('utf-8')
+#         lines = content.splitlines()
+#         current_question = None
+#         answer = ""
+#
+#         for line in lines:
+#             line = line.strip()
+#             if '?' in line:
+#                 if current_question is not None:
+#                     # Сохраняем предыдущий вопрос и ответ
+#                     if not answer:  # Если ответа нет, запросить у API
+#                         answer = get_answer_from_gemini(current_question)
+#                     flashcard = Flashcard(deck=deck, question=current_question, answer=answer)
+#                     flashcard.save()
+#
+#                 current_question = line
+#                 answer = ""
+#             else:
+#                 answer = line  # Сохраняем ответ
+#
+#         # Сохраняем последний вопрос
+#         if current_question is not None:
+#             if not answer:  # Если ответ отсутствует
+#                 answer = get_answer_from_gemini(current_question)
+#             flashcard = Flashcard(deck=deck, question=current_question, answer=answer)
+#             flashcard.save()
+#
+#     except Exception as e:
+#         print(f"Произошла ошибка при чтении файла: {e}")
+
+# def handle_uploaded_file(f, deck):
+#     try:
+#         content = f.read().decode('utf-8')
+#         lines = content.splitlines()
+#         current_question = None
+#         answer = ""
+#
+#         for line in lines:
+#             line = line.strip()
+#             if '?' in line:  # Определение вопроса
+#                 if current_question is not None:
+#                     # Если ответа нет, запросить у API
+#                     if not answer:
+#                         answer = get_answer_from_gemini(current_question) or "Ответ отсутствует"  # Обработка пустого ответа
+#                     flashcard = Flashcard(deck=deck, question=current_question, answer=answer)
+#                     flashcard.save()
+#
+#                 current_question = line
+#                 answer = ""
+#             else:
+#                 answer = line  # Сохранение ответа из файла
+#
+#         # Сохранение последнего вопроса
+#         if current_question is not None:
+#             if not answer:  # Если ответ отсутствует
+#                 answer = get_answer_from_gemini(current_question) or "Ответ отсутствует"
+#             flashcard = Flashcard(deck=deck, question=current_question, answer=answer)
+#             flashcard.save()
+#
+#     except Exception as e:
+#         print(f"Произошла ошибка при чтении файла: {e}")
 
 
 def handle_uploaded_file(f, deck):
@@ -102,28 +163,29 @@ def handle_uploaded_file(f, deck):
 
         for line in lines:
             line = line.strip()
-            if '?' in line:
+            if '?' in line:  # Определение вопроса
                 if current_question is not None:
-                    # Сохраняем предыдущий вопрос и ответ
-                    if not answer:  # Если ответа нет, запросить у API
-                        answer = get_answer_from_gemini(current_question)
+                    # Если ответа нет, запросить у API
+                    if not answer:
+                        answer = get_answer_from_cohere(current_question) or "Ответ отсутствует"  # Обработка пустого ответа
                     flashcard = Flashcard(deck=deck, question=current_question, answer=answer)
                     flashcard.save()
 
                 current_question = line
                 answer = ""
             else:
-                answer = line  # Сохраняем ответ
+                answer = line  # Сохранение ответа из файла
 
-        # Сохраняем последний вопрос
+        # Сохранение последнего вопроса
         if current_question is not None:
             if not answer:  # Если ответ отсутствует
-                answer = get_answer_from_gemini(current_question)
+                answer = get_answer_from_cohere(current_question) or "Ответ отсутствует"
             flashcard = Flashcard(deck=deck, question=current_question, answer=answer)
             flashcard.save()
 
     except Exception as e:
         print(f"Произошла ошибка при чтении файла: {e}")
+
 
 
 
@@ -145,3 +207,21 @@ def upload_file(request, deck_id):
         form = UploadFileForm()
 
     return render(request, 'flashcards_app/upload_file.html', {'form': form, 'deck': deck, 'error_message': error_message})
+
+
+
+from django.contrib import messages
+
+
+
+def delete_deck(request, deck_id):
+    deck = get_object_or_404(Deck, id=deck_id)
+
+    if request.method == 'POST':
+        deck.delete()
+        messages.success(request, "Колода успешно удалена!")
+
+
+    messages.error(request, 'Запрос на удаление не был выполнен')
+    return redirect('flashcards:deck_list')
+

@@ -13,7 +13,23 @@
     {% else %}
         <p>no flashcards for this deck</p>
     {% endif %}
+
     <a href="{% url 'flashcards:add_flashcard' deck.id %}">add flashcard</a>
+
+
+    <div>
+        <form action="{% url 'flashcards:delete_deck' deck.id %}" method="post">
+            {% csrf_token %}
+            <button type="submit">Удалить</button>
+        </form>
+    </div>
+
+
+
+    <p><a href="{% url 'flashcards:home' %}">home</a></p>
+
+
+
 
 
 
